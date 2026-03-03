@@ -1,7 +1,6 @@
 import pandas as pd
 
 def get_data():
-    """Generates simple mock data directly."""
     courses = [
         {'id': 1, 'title': 'Python Basics', 'tags': 'Python, Programming, Beginner', 'desc': 'Learn variables, loops, and functions.'},
         {'id': 2, 'title': 'Machine Learning 101', 'tags': 'ML, Python, Data Science', 'desc': 'Learn linear regression and basic classification.'},

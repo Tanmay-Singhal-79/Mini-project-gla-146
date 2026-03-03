@@ -3,10 +3,8 @@ import pandas as pd
 from data import get_data
 from model import SimpleRecommender
 
-# --- Basic Config & App Setup ---
 st.set_page_config(page_title="CogniPath AI", page_icon="📚", layout="wide")
 
-# Premium Dark Styling natively via basic CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -38,20 +36,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- State Management ---
 if 'history' not in st.session_state:
     st.session_state.history = pd.DataFrame(columns=['course_id', 'title', 'rating'])
 
-# Load Model natively
 courses_df = get_data()
 recommender = SimpleRecommender(courses_df)
 
-# --- Streamlit Basic Layout ---
 st.title("📚 CogniPath AI")
 st.caption("A Minimalist Content-Based Course Recommender Engine")
 st.divider()
 
-# Core UI Flow
 col1, col2 = st.columns([1, 2])
 
 with col1:
@@ -73,13 +67,12 @@ with col1:
     
     if not st.session_state.history.empty:
         st.markdown("**Your Learning DB:**")
-        st.dataframe(st.session_state.history[['title', 'rating']], use_container_width=True)
+        st.dataframe(st.session_state.history[['title', 'rating']])
 
 with col2:
     st.subheader("🤖 AI Extracted Tracks")
     st.markdown("We use Natural Language Processing (**TF-IDF**) to convert your interests into math, and **Cosine Similarity** to match angles against course descriptions.")
     
-    # Generate recommendations natively based on State History + String Input
     recs = recommender.recommend(user_interest, st.session_state.history)
     
     if recs.empty:
@@ -94,17 +87,15 @@ with col2:
             </div>
             """, unsafe_allow_html=True)
             
-            # Simple Feedback implementation
             rating = st.slider(f"Rate '{row['title']}' quality:", 1, 5, 3, key=f"rate_{row['id']}")
             
-            # Hide submit button natively if they already rated it
             has_rated = not st.session_state.history.empty and (row['id'] in st.session_state.history['course_id'].values)
             
             if not has_rated:
-                if st.button(f"Submit Log", key=f"btn_{row['id']}", help="Ratings 4+ will dynamically influence your future path geometry."):
+                if st.button(f"Submit Log", key=f"btn_{row['id']}"):
                     new_entry = pd.DataFrame({'course_id': [row['id']], 'title': [row['title']], 'rating': [rating]})
                     st.session_state.history = pd.concat([st.session_state.history, new_entry], ignore_index=True)
                     st.success("Log Saved! System Re-calibrating...")
-                    st.rerun()  # Forces immediately visible reload
+                    st.rerun()
             else:
                 st.info("You possess prior experience intersecting with this module.")
