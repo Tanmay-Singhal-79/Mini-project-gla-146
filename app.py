@@ -1,172 +1,110 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+from data import get_data
+from model import SimpleRecommender
 
-from data import generate_mock_data
-from model import HybridRecommender
-from evaluation import train_test_split_interactions, evaluate_model
-from utils import apply_custom_css
+# --- Basic Config & App Setup ---
+st.set_page_config(page_title="CogniPath AI", page_icon="📚", layout="wide")
 
-# --- Page Config & Styling ---
-st.set_page_config(page_title="CogniPath AI", page_icon="🧠", layout="wide")
-apply_custom_css()
-
-# --- Initialization ---
-@st.cache_data
-def load_data():
-    return generate_mock_data()
-
-courses_df, users_df, interactions_df = load_data()
-
-if 'interactions' not in st.session_state:
-    st.session_state.interactions = interactions_df.copy()
-
-if 'recommender' not in st.session_state:
-    st.session_state.recommender = HybridRecommender(courses_df, st.session_state.interactions)
-
-# --- Sidebar: User Profile & Control Panel ---
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/8636/8636883.png", width=50) 
-    st.title("CogniPath AI")
-    st.caption("Adaptive Learning Advisory Engine | Stable Release")
-    st.divider()
+# Premium Dark Styling natively via basic CSS
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', sans-serif; }
     
-    st.subheader("👤 Architect Profile")
-    user_id = st.selectbox("Select Active Learner", users_df['user_id'].tolist(), format_func=lambda x: f"User {x}")
-    user_info = users_df[users_df['user_id'] == user_id].iloc[0]
-    st.markdown(f"**Target Goal:** <span style='color: #34d399; font-weight: 600;'>{user_info['target_goal']}</span>", unsafe_allow_html=True)
+    .stApp { background-color: #0f1115; }
+    h1, h2, h3, h4 { color: #f8fafc !important; }
     
-    st.divider()
-    
-    st.subheader("⚙️ Hyperparameter Tuning")
-    k_val = st.slider("Top K Recommendations", 1, 6, 4)
-    c_weight = st.slider("Content Filter Ratio %", 0, 100, 60, help="0% = Collab Only | 100% = Content Only") 
-    
-    content_weight = c_weight / 100.0
-    collab_weight = (100 - c_weight) / 100.0
-    
-    user_history = st.session_state.interactions[st.session_state.interactions['user_id'] == user_id]
-    completed = user_history[user_history['completed'] == True]
-    progress = min(len(completed) * 10, 100) 
-    
-    st.divider()
-    st.progress(progress / 100.0)
-    st.caption(f"Knowledge Track Completion Focus: {progress}%")
-
-
-# --- Main App Frame ---
-st.markdown(f"<h1>Welcome back, {user_info['name']} 👋</h1>", unsafe_allow_html=True)
-st.markdown("<p style='color: #94a3b8; font-size: 1.1rem;'>Explore your personalized, academically verified learning trajectories below.</p>", unsafe_allow_html=True)
-
-tab1, tab2, tab3, tab4 = st.tabs(["🎯 Interactive Path", "📈 Demo Flow Mode", "💡 Professor Breakdown", "🔬 ML Diagnostics"])
-
-with tab1:
-    st.markdown("### Active Engine Recommendations")
-    st.session_state.recommender.interactions_df = st.session_state.interactions 
-    
-    recs = st.session_state.recommender.get_hybrid_recommendations(
-        user_id, top_n=k_val, content_weight=content_weight, collab_weight=collab_weight
-    )
-    
-    if recs.empty:
-        st.info("System needs more context.")
-    else:
-        cols = st.columns(min(len(recs), 2) if len(recs) > 0 else 1)
-        for i, (_, course) in enumerate(recs.iterrows()):
-            with cols[i % 2]:
-                st.markdown(f'''
-                <div class="course-card">
-                    <div class="course-title">{course['title']}</div>
-                    <div class="course-meta">
-                        <span class="tag">{course['category']}</span>
-                        <span class="tag">{course['difficulty']}</span>
-                    </div>
-                    <p style='color: #cbd5e1; font-size: 0.95rem;'>{course['description']}</p>
-                    <span class="sim-score">Sim Score: {course['final_score']:.3f}</span>
-                    <div class="explain-text">{course['explainability']}</div>
-                </div>
-                ''', unsafe_allow_html=True)
-                
-                with st.expander(f"Enrol & Calibrate Model ({course['title']})"):
-                    rating = st.slider("Assess Quality (1-5)", 1, 5, 3, key=f"rate_{course['course_id']}")
-                    if st.button("Commit Feedback", key=f"btn_{course['course_id']}"):
-                        st.session_state.recommender.adapt_feedback(user_id, course['course_id'], rating)
-                        st.session_state.interactions = st.session_state.recommender.interactions_df
-                        st.success("Matrix updated! Refresh to see new trajectory.")
-
-with tab2:
-    st.markdown("### Single-Click Viva Demonstration Pipeline")
-    st.markdown("Use this to effortlessly walk through the architecture end-to-end without manual adjustments.")
-    
-    if st.button("▶ Initialize Complete Demo Sequence", key="demo_btn"):
-        st.markdown("#### Step 1: Loading User Persona & History")
-        st.dataframe(user_history.merge(courses_df, on='course_id')[['title', 'rating', 'category']], use_container_width=True)
-        
-        st.markdown("#### Step 2: Extracting User Token Geometry (Top 3 Words)")
-        uv = st.session_state.recommender.get_user_profile_vector(user_id).flatten()
-        top_idx = uv.argsort()[::-1][:3]
-        f_names = st.session_state.recommender.vectorizer.get_feature_names_out()
-        demo_tokens = [f"{f_names[i]} ({uv[i]:.2f})" for i in top_idx]
-        st.info(f"Most heavily weighted underlying concepts derived from history: **{', '.join(demo_tokens)}**")
-        
-        st.markdown("#### Step 3: Resolving Hybrid Score Matrix")
-        st.dataframe(recs[['title', 'final_score', 'explainability']])
-        
-        st.markdown("#### Step 4: System Stability Check on Entire Dataset")
-        train_df, test_df = train_test_split_interactions(st.session_state.interactions)
-        eval_model = HybridRecommender(courses_df, train_df)
-        metrics = evaluate_model(eval_model, test_df, k=k_val)
-        
-        mc1, mc2, mc3 = st.columns(3)
-        mc1.metric(f"Precision@{k_val}", f"{metrics[f'Precision@{k_val}']}")
-        mc2.metric(f"Recall@{k_val}", f"{metrics[f'Recall@{k_val}']}")
-        mc3.metric("F1-Score", f"{metrics['F1-Score']}")
-        st.success("Demo Sequence Completed Gracefully. No mathematical paradoxes detected.")
-
-with tab3:
-    st.markdown("### Professor Explanation Mode")
-    st.markdown("""
-<div class="course-card">
-<h4 style='color: #818cf8;'>1. What is Precision@K vs Recall@K?</h4>
-<p style='color: #cbd5e1; font-size: 0.95rem;'>
-<b>Precision</b> tracks exactly how many of the top 'K' courses we recommended were actually relevant or liked by the unseen user target. If we recommend 5 courses, and they like 4, Precision is high. <br>
-<b>Recall</b> asks out of ALL the user's liked courses in the whole system, what percentage did we catch in our top K? Recommending 1 highly precise course gives great Precision but terrible Recall.
-</p>
-
-<h4 style='color: #818cf8;'>2. Why TF-IDF was chosen?</h4>
-<p style='color: #cbd5e1; font-size: 0.95rem;'>
-Term Frequency-Inverse Document Frequency handles scaling. Natural Language has filler words ("the", "learn", "how"). TF-IDF penalizes these common strings and boosts rare, highly specialized tokens ("PyTorch", "Network"). This results in a cleaner similarity matrix without the massive overhead/RAM cost of Deep Neural Networks (like BERT).
-</p>
-
-<h4 style='color: #818cf8;'>3. The Power of Hybrid Filtering</h4>
-<p style='color: #cbd5e1; font-size: 0.95rem;'>
-A pure <b>Content</b> system traps users in a bubble; if they study Python, the system only shows Python, never branching into ML. <br>
-A pure <b>Collaborative</b> model suffers the "Cold Start Block" (new items/users have no history so they never get recommended). <br>
-By blending them harmoniously, we rely on Content text for cold starts and lean into Peer behaviors to suggest adjacent learning branches naturally, solving both limitations cleanly.
-</p>
-</div>
+    .course-card {
+        background-color: #1e212b;
+        border-radius: 12px; border: 1px solid #334155;
+        padding: 24px; margin-bottom: 24px;
+        transition: transform 0.2s;
+    }
+    .course-card:hover {
+        transform: translateY(-4px);
+        border-color: #6366f1;
+    }
+    .c-title {
+        color: #818cf8; font-size: 1.35rem; font-weight: 600; margin-bottom: 8px;
+    }
+    .c-tags {
+        color: #94a3b8; font-size: 0.85rem; margin-bottom: 15px; 
+    }
+    .sim-badge {
+        display: inline-block; background-color: #334155; color: #34d399;
+        padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold;
+    }
+</style>
 """, unsafe_allow_html=True)
 
-with tab4:
-    st.markdown("### Explainable ML Vectors")
-    uv = st.session_state.recommender.get_user_profile_vector(user_id)
-    n_features = st.session_state.recommender.tfidf_matrix.shape[1]
+# --- State Management ---
+if 'history' not in st.session_state:
+    st.session_state.history = pd.DataFrame(columns=['course_id', 'title', 'rating'])
+
+# Load Model natively
+courses_df = get_data()
+recommender = SimpleRecommender(courses_df)
+
+# --- Streamlit Basic Layout ---
+st.title("📚 CogniPath AI")
+st.caption("A Minimalist Content-Based Course Recommender Engine")
+st.divider()
+
+# Core UI Flow
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    st.subheader("👤 Step 1: Tell AI your goal")
+    user_interest = st.selectbox(
+        "Select your primary focus point", 
+        ["Data Science", "Web Development", "Cyber Security", "Python Programming", "Machine Learning"]
+    )
     
-    st.code(f"""
-[DIAGNOSTICS - USER {user_id}]
-> Vocabulary Features Extracted: {n_features} Words
-> User Profile Vector Shape: {uv.shape}
-> Model Base Weight Configuration: Content ({(content_weight)*100:.0f}%) / Collaborative ({(collab_weight)*100:.0f}%)
-    """)
+    st.divider()
     
-    st.markdown("#### User Mathematical Trace")
-    flat_uv = uv.flatten()
-    top_feature_indices = flat_uv.argsort()[::-1][:10]
-    feature_names = st.session_state.recommender.vectorizer.get_feature_names_out()
+    st.markdown("**📊 Step 2: Track Progress**")
+    total_courses_available = len(courses_df)
+    completed_courses = len(st.session_state.history)
+    progress_val = (completed_courses / total_courses_available) if completed_courses > 0 else 0.0
     
-    vector_df = pd.DataFrame({
-        "TF-IDF Token": [feature_names[i] for i in top_feature_indices],
-        "Token Significance Weight": [flat_uv[i] for i in top_feature_indices]
-    })
+    st.progress(progress_val)
+    st.caption(f"Knowledge Database Exhausted: {int(progress_val * 100)}%")
     
-    st.dataframe(vector_df.style.background_gradient(cmap="viridis"), use_container_width=True)
+    if not st.session_state.history.empty:
+        st.markdown("**Your Learning DB:**")
+        st.dataframe(st.session_state.history[['title', 'rating']], use_container_width=True)
+
+with col2:
+    st.subheader("🤖 AI Extracted Tracks")
+    st.markdown("We use Natural Language Processing (**TF-IDF**) to convert your interests into math, and **Cosine Similarity** to match angles against course descriptions.")
+    
+    # Generate recommendations natively based on State History + String Input
+    recs = recommender.recommend(user_interest, st.session_state.history)
+    
+    if recs.empty:
+        st.warning("No matches found in our DB.")
+    else:
+        for i, row in recs.iterrows():
+            st.markdown(f"""
+            <div class="course-card">
+                <div class="c-title">{row['title']} <span class="sim-badge">Match: {row['sim_score']:.2f}</span></div>
+                <div class="c-tags">Categories: {row['tags']}</div>
+                <div style="color: #cbd5e1; font-size: 0.95rem;">{row['desc']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Simple Feedback implementation
+            rating = st.slider(f"Rate '{row['title']}' quality:", 1, 5, 3, key=f"rate_{row['id']}")
+            
+            # Hide submit button natively if they already rated it
+            has_rated = not st.session_state.history.empty and (row['id'] in st.session_state.history['course_id'].values)
+            
+            if not has_rated:
+                if st.button(f"Submit Log", key=f"btn_{row['id']}", help="Ratings 4+ will dynamically influence your future path geometry."):
+                    new_entry = pd.DataFrame({'course_id': [row['id']], 'title': [row['title']], 'rating': [rating]})
+                    st.session_state.history = pd.concat([st.session_state.history, new_entry], ignore_index=True)
+                    st.success("Log Saved! System Re-calibrating...")
+                    st.rerun()  # Forces immediately visible reload
+            else:
+                st.info("You possess prior experience intersecting with this module.")
