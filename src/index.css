@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #00A19B;
+  --color-primary-dark: #008f89;
+  --color-background: #E4DDD3;
+  --color-surface: #ffffff;
+  --color-text: #1a2e2c;
+  --color-text-muted: #4a6663;
+  --font-sans: 'Outfit', 'Inter', system-ui, sans-serif;
+  
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  /* God Level Additions */
+  --shadow-premium: 0 30px 60px -12px rgba(0, 161, 155, 0.12), 0 18px 36px -18px rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.4);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    @apply antialiased;
+    background-image: 
+      radial-gradient(circle at 0% 0%, rgba(0, 161, 155, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(0, 161, 155, 0.08) 0%, transparent 40%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-2xl border border-white/40 transition-all duration-500;
+    background: var(--glass-bg);
+    box-shadow: var(--shadow-premium);
+  }
+
+  .glass-card:hover {
+    @apply border-white/60 -translate-y-1;
+    box-shadow: 0 40px 80px -15px rgba(0, 161, 155, 0.15);
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white font-black py-4 px-10 rounded-[1.5rem] shadow-xl shadow-primary/20 
+           hover:shadow-primary/30 hover:scale-[1.05] active:scale-[0.95] transition-all duration-500 flex items-center justify-center gap-2;
+  }
+
+  .input-field {
+    @apply bg-white/60 border-2 border-primary/5 focus:border-primary/20 focus:bg-white 
+           rounded-[1.5rem] px-6 py-5 outline-none transition-all duration-500 placeholder:text-slate-400 font-bold;
+  }
+
+  .mint-badge {
+    @apply bg-primary/10 text-primary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/10;
+  }
+
+  .badge-beginner {
+    @apply bg-emerald-50 text-emerald-600 border-emerald-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border;
+  }
+
+  .badge-intermediate {
+    @apply bg-amber-50 text-amber-600 border-amber-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border;
+  }
+
+  .badge-advanced {
+    @apply bg-rose-50 text-rose-600 border-rose-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border;
+  }
+
+  .milestone-item {
+    @apply flex items-start gap-3 py-2 border-b border-primary/5 last:border-0;
+  }
+
+  /* Responsive Utilities */
+  .mobile-padding {
+    @apply p-6 md:p-12;
+  }
+  
+  .stack-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/10 rounded-full border-4 border-transparent bg-clip-padding hover:bg-primary/20 transition-colors;
+}
+
+/* Fix for horizontal scroll on mobile */
+* {
+  @apply min-w-0;
+}
